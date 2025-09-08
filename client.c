@@ -11,9 +11,10 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <float.h>
+#include <string.h>
+#include <assert.h>
 #include <quicly/streambuf.h>
 
-#include <picotls/../../t/util.h>
 
 static int client_socket = -1;
 static quicly_conn_t *conn = NULL;
@@ -148,7 +149,7 @@ int run_client(const char *port, bool gso, const char *logfile, const char *cc, 
     struct ev_loop *loop = EV_DEFAULT;
 
     struct sockaddr_storage sas;
-    socklen_t salen;
+    socklen_t salen = sizeof(sas);
     if (resolve_address((void *)&sas, &salen, host, port, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP) != 0) {
         exit(-1);
     }
@@ -202,6 +203,10 @@ int run_client(const char *port, bool gso, const char *logfile, const char *cc, 
     ++next_cid.master_id;
 
     enqueue_request(conn);
+    
+    // Set connection reference for RTT measurements
+    client_stream_set_connection(conn);
+    
     if(!send_pending(&client_ctx, client_socket, conn)) {
         printf("failed to connect: send_pending failed\n");
         exit(1);

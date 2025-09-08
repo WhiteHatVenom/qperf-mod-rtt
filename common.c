@@ -4,7 +4,10 @@
 #include <netinet/udp.h>
 #include <netdb.h>
 #include <memory.h>
+#include <string.h>
+#include <stdio.h>
 #include <picotls/openssl.h>
+#include <openssl/pem.h>
 #include <errno.h>
 
 ptls_context_t *get_tlsctx()
@@ -162,5 +165,70 @@ void print_escaped(const char *src, size_t len)
     }
     putchar('\n');
     fflush(stdout);
+}
+
+int resolve_address(struct sockaddr *sa, socklen_t *salen, const char *host, const char *port, int family, int type, int protocol)
+{
+    struct addrinfo *addr = get_address(host, port);
+    if (addr == NULL) {
+        return -1;
+    }
+    
+    if (*salen < addr->ai_addrlen) {
+        freeaddrinfo(addr);
+        return -1;
+    }
+    
+    memcpy(sa, addr->ai_addr, addr->ai_addrlen);
+    *salen = addr->ai_addrlen;
+    freeaddrinfo(addr);
+    return 0;
+}
+
+void setup_session_cache(ptls_context_t *ctx)
+{
+    // Basic session cache setup - implementation depends on picotls setup
+    // For now, just a placeholder - in real implementation this would
+    // set up session ticket handling
+}
+
+void setup_log_event(ptls_context_t *ctx, const char *logfile)
+{
+    (void)ctx;
+    (void)logfile;
+}
+
+void load_certificate_chain(ptls_context_t *ctx, const char *cert_file)
+{
+    if (ptls_load_certificates(ctx, cert_file) != 0) {
+        fprintf(stderr, "failed to load certificate chain from %s\n", cert_file);
+        exit(1);
+    }
+}
+
+void load_private_key(ptls_context_t *ctx, const char *key_file)
+{
+    static ptls_openssl_sign_certificate_t sign_cert;
+    static EVP_PKEY *private_key = NULL;
+
+    if (private_key == NULL) {
+        FILE *fp = fopen(key_file, "r");
+        if (fp == NULL) {
+            fprintf(stderr, "failed to open private key file %s\n", key_file);
+            exit(1);
+        }
+        private_key = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+        fclose(fp);
+        if (private_key == NULL) {
+            fprintf(stderr, "failed to read private key from %s\n", key_file);
+            exit(1);
+        }
+    }
+
+    if (ptls_openssl_init_sign_certificate(&sign_cert, private_key) != 0) {
+        fprintf(stderr, "failed to initialize sign certificate from %s\n", key_file);
+        exit(1);
+    }
+    ctx->sign_certificate = &sign_cert.super;
 }
 

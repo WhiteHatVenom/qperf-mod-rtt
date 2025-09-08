@@ -9,14 +9,17 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <assert.h>
+#include <netdb.h>
 
 #include <quicly/streambuf.h>
 
 #include <picotls/openssl.h>
-#include <picotls/../../t/util.h>
 
 static quicly_conn_t **conns;
-static int server_socket = -1;
 static quicly_context_t server_ctx;
 static int server_socket;
 static size_t num_conns = 0;

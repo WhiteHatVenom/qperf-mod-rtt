@@ -3,6 +3,8 @@
 #include "common.h"
 #include <ev.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <assert.h>
 #include <quicly/streambuf.h>
 
 static int current_second = 0;
@@ -10,6 +12,7 @@ static uint64_t bytes_received = 0;
 static ev_timer report_timer;
 static bool first_receive = true;
 static int runtime_s = 10;
+static quicly_conn_t *client_conn = NULL;  // Store connection reference for RTT access
 
 
 void format_size(char *dst, double bytes)
@@ -29,7 +32,15 @@ static void report_cb(EV_P_ ev_timer *w, int revents)
     char size_str[100];
     format_size(size_str, bytes_received);
 
-    printf("second %i: %s (%lu bytes received)\n", current_second, size_str, bytes_received);
+    // Get RTT information if connection is available
+    double rtt_ms = 0.0;
+    if (client_conn != NULL) {
+        quicly_stats_t stats;
+        quicly_get_stats(client_conn, &stats);
+        rtt_ms = (double)stats.rtt.smoothed / 1000.0; // Convert microseconds to milliseconds
+    }
+
+    printf("second %i: %s (%lu bytes received) RTT: %.2fms\n", current_second, size_str, bytes_received, rtt_ms);
     fflush(stdout);
     ++current_second;
     bytes_received = 0;
@@ -90,4 +101,9 @@ quicly_error_t client_on_stream_open(quicly_stream_open_t *self, quicly_stream_t
 void client_set_quit_after(int seconds)
 {
     runtime_s = seconds;
+}
+
+void client_stream_set_connection(quicly_conn_t *conn)
+{
+    client_conn = conn;
 }
