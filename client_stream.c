@@ -37,7 +37,7 @@ static void report_cb(EV_P_ ev_timer *w, int revents)
     if (client_conn != NULL) {
         quicly_stats_t stats;
         quicly_get_stats(client_conn, &stats);
-        rtt_ms = (double)stats.rtt.smoothed / 1000.0; // Convert microseconds to milliseconds
+        rtt_ms = (double)stats.rtt.smoothed;
     }
 
     printf("second %i: %s (%lu bytes received) RTT: %.2fms\n", current_second, size_str, bytes_received, rtt_ms);
